@@ -1,6 +1,55 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from datetime import datetime, time
+
+def check_promotion_distribution(train_data, test_data, promotion_column='promotion_flag'):
+    """
+    Checks and compares the distribution of a promotion flag between training and test sets.
+    """
+
+    if promotion_column not in train_data.columns or promotion_column not in test_data.columns:
+        print(f"Error: Column '{promotion_column}' not found in both datasets.")
+        return
+
+    train_counts = train_data[promotion_column].value_counts(normalize=True).sort_index()
+    test_counts = test_data[promotion_column].value_counts(normalize=True).sort_index()
+
+    print("Training Set Promotion Distribution:")
+    print(train_counts)
+
+    print("\nTest Set Promotion Distribution:")
+    print(test_counts)
+
+    # Plotting the distributions
+    plt.figure(figsize=(5, 3))
+
+    plt.subplot(1, 2, 1)
+    sns.countplot(x=promotion_column, data=train_data)
+    plt.title("Training Set Promotion Distribution")
+
+    plt.subplot(1, 2, 2)
+    sns.countplot(x=promotion_column, data=test_data)
+    plt.title("Test Set Promotion Distribution")
+
+    plt.tight_layout()
+    plt.show()
+
+    #plotting normalized distributions for better comparison.
+    plt.figure(figsize=(5, 3))
+
+    plt.subplot(1, 2, 1)
+    train_counts.plot(kind='bar', color='skyblue')
+    plt.title("Training Set Promotion Distribution (Normalized)")
+    plt.ylabel("Proportion")
+
+    plt.subplot(1, 2, 2)
+    test_counts.plot(kind='bar', color='salmon')
+    plt.title("Test Set Promotion Distribution (Normalized)")
+    plt.ylabel("Proportion")
+
+    plt.tight_layout()
+    plt.show()
 
 def analyze_holiday_sales(data, date_column='Date', sales_column='Sales', holiday_column='StateHoliday'):
     """
@@ -38,7 +87,7 @@ def analyze_holiday_sales(data, date_column='Date', sales_column='Sales', holida
         avg_sales_after = after_holiday[sales_column].mean()
 
         # Visualization
-        plt.figure(figsize=(8, 4))
+        plt.figure(figsize=(5, 3))
         plt.bar(['Before', 'During', 'After'], [avg_sales_before, avg_sales_during, avg_sales_after])
         plt.title(f'Sales Behavior Around Holiday {holiday_date.date()}')
         plt.ylabel('Average Sales')
@@ -77,7 +126,7 @@ def analyze_seasonal_purchases(data, date_column='Date', sales_column='Sales', s
         seasonal_sales[season] = seasonal_data[sales_column].mean()
 
         # Visualization for each season
-        plt.figure(figsize=(8, 5))
+        plt.figure(figsize=(5, 3))
         sns.lineplot(x=seasonal_data[date_column], y=seasonal_data[sales_column])
         plt.title(f'Sales During {season} ({start_date.date()} to {end_date.date()})')
         plt.xlabel('Date')
@@ -90,7 +139,7 @@ def analyze_seasonal_purchases(data, date_column='Date', sales_column='Sales', s
         print("-" * 30)
 
     # Overall seasonal comparison (bar plot)
-    plt.figure(figsize=(8, 4))
+    plt.figure(figsize=(5, 3))
     plt.bar(seasonal_sales.keys(), seasonal_sales.values())
     plt.title('Comparison of Average Sales Across Seasons')
     plt.ylabel('Average Sales')
@@ -112,7 +161,7 @@ def analyze_sales_customer_correlation(data, sales_column='Sales', customer_colu
     print(f"Correlation between {sales_column} and {customer_column}: {correlation:.2f}")
 
     # Create a scatter plot
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(5, 3))
     sns.scatterplot(x=customer_column, y=sales_column, data=data)
     plt.title(f'Scatter Plot: {sales_column} vs. {customer_column}')
     plt.xlabel(customer_column)
@@ -121,7 +170,7 @@ def analyze_sales_customer_correlation(data, sales_column='Sales', customer_colu
 
     # Create a heatmap of the correlation matrix (optional)
     correlation_matrix = data[[sales_column, customer_column]].corr()
-    plt.figure(figsize=(5, 4))
+    plt.figure(figsize=(5, 3))
     sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', vmin=-1, vmax=1)
     plt.title('Correlation Heatmap')
     plt.show()
@@ -146,7 +195,7 @@ def analyze_promo_effects(data, date_column='Date', sales_column='Sales', custom
     print(data.groupby(promo_column)[[sales_column, customer_column]].mean())
 
     # 2. Visualization: Sales and Customers with/without Promo
-    plt.figure(figsize=(8, 4))
+    plt.figure(figsize=(5, 3))
 
     plt.subplot(1, 2, 1)
     sns.barplot(x=promo_column, y=sales_column, data=data)
@@ -161,7 +210,7 @@ def analyze_promo_effects(data, date_column='Date', sales_column='Sales', custom
 
     # 3. Time Series Analysis (Optional, if you have enough time-series data)
     if len(data[date_column].unique()) > 10: #check if there is enough date data.
-        plt.figure(figsize=(15, 5))
+        plt.figure(figsize=(5, 3))
 
         plt.subplot(1, 2, 1)
         sns.lineplot(x=date_column, y=sales_column, hue=promo_column, data=data)
@@ -226,6 +275,34 @@ def analyze_promo_effectiveness(data, store_column='Store', sales_column='Sales'
     print("\nStores with Highest Potential (Based on Average Sales):")
     print(high_potential_stores)
 
+def analyze_store_trends(file_path, date_column="Date", open_column="Open", value_column="Customers"):
+    """
+    Analyzes customer behavior trends based on store opening times.
+    """
+    try:
+        # Load dataset
+        df = pd.read_csv(file_path, parse_dates=[date_column])
+        df = df.loc[:, ~df.columns.str.contains('^Unnamed', case=False)]  # Remove unnamed columns
+        
+        # Extract hour and time category
+        df["Hour"] = df[date_column].dt.hour
+        df["TimeCategory"] = df[open_column].apply(lambda x: "Open" if x == 1 else "Closed")
+
+        # Plot trends
+        plt.figure(figsize=(5, 3))
+        sns.lineplot(data=df, x="Hour", y=value_column, hue="TimeCategory", marker="o")
+
+        plt.title(f"Customer Trends During Store Opening and Closing Times")
+        plt.xlabel("Hour of the Day")
+        plt.ylabel(value_column)
+        plt.legend(title="Store Status")
+        plt.grid(True)
+        plt.show()
+
+    except Exception as e:
+        print(f"Error processing file: {e}")
+        raise
+
 def analyze_customer_behavior_by_time(data, time_column='Date', customer_column='Customers'):
     """
     Analyzes customer behavior trends during store opening and closing times, extracting time from a datetime column.
@@ -244,14 +321,17 @@ def analyze_customer_behavior_by_time(data, time_column='Date', customer_column=
         print(f"Error: Time column '{time_column}' is not in a datetime-compatible format.")
         return
 
-    # Group by time and calculate average customer count
-    time_customer_analysis = data.groupby('TimeOnly')[customer_column].mean().reset_index()
+    # Convert TimeOnly to seconds since midnight
+    data['SecondsSinceMidnight'] = data['TimeOnly'].apply(lambda t: t.hour * 3600 + t.minute * 60 + t.second)
+
+    # Group by seconds since midnight and calculate average customer count
+    time_customer_analysis = data.groupby('SecondsSinceMidnight')[customer_column].mean().reset_index()
 
     # Visualization: Customer count over time
     plt.figure(figsize=(15, 6))
-    sns.lineplot(x=time_customer_analysis['TimeOnly'], y=time_customer_analysis[customer_column])
+    sns.lineplot(x=time_customer_analysis['SecondsSinceMidnight'], y=time_customer_analysis[customer_column]) #Corrected line!
     plt.title('Customer Behavior Over Time')
-    plt.xlabel('Time')
+    plt.xlabel('Time (Seconds Since Midnight)')
     plt.ylabel('Average Customer Count')
     plt.xticks(rotation=45)
     plt.tight_layout()
@@ -261,11 +341,17 @@ def analyze_customer_behavior_by_time(data, time_column='Date', customer_column=
     peak_time = time_customer_analysis.loc[time_customer_analysis[customer_column].idxmax()]
     low_time = time_customer_analysis.loc[time_customer_analysis[customer_column].idxmin()]
 
-    print(f"Peak Customer Time: {peak_time['TimeOnly']} (Average Customers: {peak_time[customer_column]:.2f})")
-    print(f"Lowest Customer Time: {low_time['TimeOnly']} (Average Customers: {low_time[customer_column]:2f})")
+    peak_seconds = peak_time['SecondsSinceMidnight']
+    low_seconds = low_time['SecondsSinceMidnight']
 
-    data.drop('TimeOnly', axis=1, inplace=True) #remove the extra column.
+    peak_time_obj = time(peak_seconds // 3600, (peak_seconds % 3600) // 60, peak_seconds % 60)
+    low_time_obj = time(low_seconds // 3600, (low_seconds % 3600) // 60, low_seconds % 60)
 
+    print(f"Peak Customer Time: {peak_time_obj} (Average Customers: {peak_time[customer_column]:.2f})")
+    print(f"Lowest Customer Time: {low_time_obj} (Average Customers: {low_time[customer_column]:2f})")
+
+    data.drop(['TimeOnly', 'SecondsSinceMidnight'], axis=1, inplace=True)
+              
 def analyze_weekday_open_stores(data, store_column='Store', weekday_column='DayOfWeek', sales_column='Sales', weekday_values=None, weekend_values=None):
     
     """
@@ -297,7 +383,6 @@ def analyze_weekday_open_stores(data, store_column='Store', weekday_column='DayO
         print(weekend_avg_sales)
     else:
         print("\nNo stores were found that are open on all weekdays.")
-
 
 def analyze_assortment_sales(data, assortment_column='Assortment', sales_column='Sales'):
     """
